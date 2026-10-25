@@ -251,6 +251,7 @@ void setupWeb() {
       Serial.print(F("RTC time/date has been set.\n"));
     }
     Serial.print(F("Preferences updated, rebooting...\n\n\n\n\n"));
+    rebooting = true; // loop() sends black frames during the delay, so the restart starts from black
     delay(1000);
     ESP.restart();
   });

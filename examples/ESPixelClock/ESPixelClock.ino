@@ -84,6 +84,7 @@ uint8_t currentPatternIndex = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 
 uint8_t power = 1;
+volatile bool rebooting = false; // set before a restart or OTA update: loop() then only sends black
 uint8_t leadingZeroEnabled = 1;
 uint8_t blinkingColonEnabled = 1;
 uint8_t time24 = 1;
@@ -235,10 +236,16 @@ void getNTPTime(){
 void setup() {
   // Start the LEDs first and blank them: the data line floats during reset,
   // so the strip shows random noise until the first frame is sent.
+  // Hold the line low first so the LEDs see a clean reset before the first frame.
+  pinMode(DATA_PIN, OUTPUT);
+  digitalWrite(DATA_PIN, LOW);
+  delayMicroseconds(300);
   FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
   FastLED.setCorrection(TypicalSMD5050);
   FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
   FastLED.clear(true);
+  delay(1);
+  FastLED.clear(true); // again, in case the first frame after reset was garbled
 
   pinMode(button1.PIN,INPUT_PULLUP);
   attachInterruptArg(button1.PIN, isr, &button1, FALLING);
@@ -283,6 +290,9 @@ void setup() {
   setupWifi();
   setupWeb();
   ElegantOTA.begin(&server);    // Start ElegantOTA
+  // Blank the display during an update, so the restart that follows starts from black.
+  ElegantOTA.onStart([]() { rebooting = true; });
+  ElegantOTA.onEnd([](bool success) { if (!success) rebooting = false; });
   server.begin();
   Serial.println("HTTP server started on port 80");
   getNTPTime(); //get initial time
@@ -430,7 +440,7 @@ void loop()
     }
   }
 
-  if (power == 0) {
+  if (power == 0 || rebooting) {
     fill_solid(leds, NUM_LEDS, CRGB::Black);
   }
   else {
