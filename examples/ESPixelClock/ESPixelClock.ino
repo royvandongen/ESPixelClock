@@ -285,10 +285,11 @@ void setup() {
   ElegantOTA.begin(&server);    // Start ElegantOTA
   server.begin();
   Serial.println("HTTP server started on port 80");
-  showIP(); //after server.begin() so OTA is already reachable
   getNTPTime(); //get initial time
+  printLocalTime(); //so the first frame shows the NTP-corrected time
   temp = SHT21.getTemperature()+temperatureOffset; //get inital temp reading
   rh = SHT21.getHumidity();
+  showIP(); //last, so the time follows without a dark gap; OTA is already reachable
 }
 
 void maskTime(int timeInt){
@@ -391,8 +392,10 @@ void showIP(){
       FastLED.show();
       FastLED.delay(1000 / FRAMES_PER_SECOND);
     }
-    FastLED.clear(true); //short gap so repeated octets can be told apart
-    FastLED.delay(300);
+    if (i < 3){
+      FastLED.clear(true); //short gap so repeated octets can be told apart
+      FastLED.delay(300);
+    }
   }
   leadingZeroEnabled = savedLeadingZero;
 }
