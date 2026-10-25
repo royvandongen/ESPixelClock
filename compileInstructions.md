@@ -1,24 +1,28 @@
-This document is intended to describe the steps needed to compile and upload modified firmware to the ESPixelClock
-Note that it is currently a work in progress, and may not be comprehensive, but should provide a good starting point at least.
+This document describes how to compile modified firmware for the ESPixelClock and upload it to the clock over WiFi.
 
+The firmware is built with [PlatformIO](https://platformio.org/) (PlatformIO Core 6.2.0 or newer) on arduino-esp32 core 3.x. `platformio.ini` in the repository root pins the platform and all library versions.
 
-Follow these instructions to install the ESP32 boards into the arduino IDE, https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md
+## Build
 
-Set the board to "ESP32 Dev module" in the Boards Menu,
+From the repository root:
 
-install the required libraries, including (but not necessarily limited to)
-- FastLED.h
-- AsyncTCP.h
-- ESPAsyncWebServer.h
-- AsyncElegantOTA.h
-- DS3231M.h
-- SHT21.h
+```
+pio run              # firmware -> .pio/build/espixelclock/firmware.bin
+pio run -t buildfs   # web files in examples/ESPixelClock/data -> .pio/build/espixelclock/spiffs.bin
+```
 
-Compile code to verify changes,
+Check the `Flash:` line of the build output. The firmware must fit in the 1280 KB OTA app slot.
 
-Then Go to the _Sketch_ menu > and click _Export Compiled Binary_
+## Upload over WiFi
 
-The web files are stored in the data subdirectory and uploaded to the file system of the clock. To update the files on the clock, use the ESP32 Sketch Data Upload plugin to generate a binary of the spiffs partition. Ignore errors about not being connected.  Watch the status messages for the path to the temporary binary files generated. On my machine, they were in C:\Users\<username>\AppData\Local\Temp\arduino_build_299134.
+Open `http://<clock-ip>/update` in a browser:
 
-Upload the .bin file created using the web UI.
+- Select **Firmware** and upload `firmware.bin`.
+- Select **Filesystem** and upload `spiffs.bin` only when the web files changed.
 
+## Notes
+
+- OTA cannot change the partition table. `partitions.csv` matches the layout the clock shipped with; do not change it.
+- SPIFFS file names are limited to 31 characters, including the leading `/` and folders.
+- The prebuilt original firmware is in `examples/ESPixelClock/compiled/`. Upload `ESPixelClock.ino.bin` through the same page to go back to it.
+- If the clock is connected over USB, `pio run -t upload` and `pio run -t uploadfs` flash it directly.

@@ -96,7 +96,7 @@ void setupWeb() {
     Serial.println("ASYNC POST: /fieldValue");
     int paramsCount = request->params();
     for(int i = 0; i< paramsCount; i++){
-      AsyncWebParameter* p = request->getParam(i);
+      const AsyncWebParameter* p = request->getParam(i);
       if(p->isFile()){ //p->isPost() is also true
         Serial.printf("FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
       } else if(p->isPost()){
@@ -221,13 +221,13 @@ void setupWeb() {
     int headers = request->headers();
     int i;
     for(i=0;i<headers;i++){
-      AsyncWebHeader* h = request->getHeader(i);
+      const AsyncWebHeader* h = request->getHeader(i);
       Serial.printf("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
     }
 
     int params = request->params();
     for(i=0;i<params;i++){
-      AsyncWebParameter* p = request->getParam(i);
+      const AsyncWebParameter* p = request->getParam(i);
       if(p->isFile()){
         Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
       } else if(p->isPost()){

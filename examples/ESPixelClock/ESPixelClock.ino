@@ -40,7 +40,7 @@
 #include <Preferences.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
+#include <ElegantOTA.h>
 
 #include <time.h>
 #include <DS3231M.h> //https://github.com/SV-Zanshin/DS3231M
@@ -124,7 +124,7 @@ CRGBArray<NUM_LEDS> leds;
 #include "fields.h"
 
 
-#include "wifi.h"
+#include "wifiSetup.h"
 #include "web.h"
 
 // wifi ssid and password should be added to a file in the sketch named secrets.h
@@ -282,7 +282,7 @@ void setup() {
   loadFieldsFromEEPROM(fields, fieldCount);
   setupWifi();
   setupWeb();
-  AsyncElegantOTA.begin(&server);    // Start ElegantOTA
+  ElegantOTA.begin(&server);    // Start ElegantOTA
   server.begin();
   Serial.println("HTTP server started on port 80");
   getNTPTime(); //get initial time
@@ -381,7 +381,7 @@ void nextPalette()
 void loop()
 {
   //handleWeb();
-  AsyncElegantOTA.loop();
+  ElegantOTA.loop();
   if (button1.pressed) {
     Serial.printf("Button 1 has been pressed\n");
     button1.pressed = false;
