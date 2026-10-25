@@ -103,10 +103,30 @@ String processor(const String& var){
   return String(); //Return empty string if no matches
 }
 
-
+// CSRF protection: browsers send an Origin header on cross-site POSTs, so a POST
+// whose Origin is not this clock comes from another website. Requests without an
+// Origin (curl, scripts) are not browser-driven and pass. This must be a handler,
+// not middleware: middleware runs after an upload body has been processed, while
+// handlers are picked right after the headers, before any OTA data is written.
+class CrossOriginBlocker : public AsyncWebHandler {
+public:
+  bool canHandle(AsyncWebServerRequest *request) const override {
+    WebRequestMethodComposite m = request->method();
+    if (m == HTTP_GET || m == HTTP_HEAD || m == HTTP_OPTIONS) return false;
+    const AsyncWebHeader *origin = request->getHeader("Origin");
+    if (!origin) return false;
+    return !origin->value().equalsIgnoreCase("http://" + request->host());
+  }
+  void handleRequest(AsyncWebServerRequest *request) override {
+    Serial.println("Blocked cross-origin " + request->url());
+    request->send(403, "text/plain", "Cross-origin request blocked");
+  }
+  bool isRequestHandlerTrivial() const override { return true; } //don't collect the body
+};
 
 void setupWeb() {
 //ASYNC
+  server.addHandler(new CrossOriginBlocker()); //first, so it is checked before every other handler
   server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
