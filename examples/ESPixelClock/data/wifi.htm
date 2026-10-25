@@ -42,6 +42,7 @@
     NTP Server1: <input class="form-control input" type='text' name='NTP_SERVER1' value='%NTPSERVER1%'><br>
 	NTP Server2: <input class="form-control input" type='text' name='NTP_SERVER2' value='%NTPSERVER2%'><br>
 	<label  for="TIMEZONE">Time Zone:</label>
+	<input type="hidden" id="TZNAME" name="TZNAME">
 	<select class="form-control input" id="TIMEZONE" name="TIMEZONE">
 	<option value ="GMT0,">Africa/Abidjan</option>
 	<option value ="GMT0,">Africa/Accra</option>
@@ -484,8 +485,22 @@
 Temp: %TEMPERATURE% Humidity:%HUMIDITY%
 <script>
 $(function() {
-    var temp="%TIMEZONE%"; 
-    $("#TIMEZONE").val(temp);
+    var temp="%TIMEZONE%";
+    var tzName="%TZNAME%";
+    // Many zones share one TZ string, so select by the saved zone name when there is one.
+    var match = $("#TIMEZONE option").filter(function() {
+        return this.value === temp && $(this).text() === tzName;
+    });
+    if (match.length) {
+        match.first().prop("selected", true);
+    } else {
+        $("#TIMEZONE").val(temp);
+    }
+    function syncTzName() {
+        $("#TZNAME").val($("#TIMEZONE option:selected").text());
+    }
+    syncTzName();
+    $("#TIMEZONE").change(syncTzName);
 });
 </script>
 </body>
