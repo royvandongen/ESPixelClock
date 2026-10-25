@@ -55,7 +55,7 @@ AsyncWebServer server(80); //for the update server
 #warning "Requires FastLED 3.1.8 or later; check github for latest code."
 #endif
 
-String ssid,password,tzInfo,ntpServer1,ntpServer2,clockName; 
+String ssid,password,tzInfo,tzName,ntpServer1,ntpServer2,clockName; 
 
 int8_t timezoneOffset = -6; // Central Time
 bool tzChanged=false;
@@ -248,6 +248,7 @@ void setup() {
     Serial.printf("     WiFi pass: %s\n","*****");
     tzInfo = preferences.getString("timezone", "EST5EDT,M3.2.0,M11.1.0"); //load eastern time if no tz stored
     Serial.printf("     Timezone: %s\n",tzInfo.c_str());
+    tzName = preferences.getString("tzName", "");  //zone name picked in the UI; many zones share one TZ string
     ntpServer1  = preferences.getString("ntpServer1", "time.google.com");
     Serial.printf("     ntpServer1: %s\n",ntpServer1.c_str());
     ntpServer2 = preferences.getString("ntpServer2", "pool.ntp.org");

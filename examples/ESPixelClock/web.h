@@ -25,6 +25,17 @@
 //#include "compressed_html.h"
 //#include "combined_html.h"
 
+// Zone names like "Europe/Amsterdam" or "America/Argentina/Buenos_Aires".
+// The name is echoed into a script on wifi.htm, so only allow safe characters.
+bool isValidTzName(const String& s){
+  if (s.length() == 0 || s.length() > 64) return false;
+  for (size_t i = 0; i < s.length(); i++){
+    char c = s[i];
+    if (!(isalnum((unsigned char)c) || c == '/' || c == '_' || c == '-' || c == '+')) return false;
+  }
+  return true;
+}
+
 String processor(const String& var){
   Serial.print(var+": ");
  char dateStr[13];
@@ -41,6 +52,7 @@ String processor(const String& var){
   if(var == "DATE"){Serial.println(dateStr);return String(dateStr);}
   if(var == "TIME"){Serial.println(timeStr);return String(timeStr);}
   if(var == "TIMEZONE"){Serial.println(tzInfo);return String(tzInfo);}
+  if(var == "TZNAME"){return tzName;}
   if(var == "NAME"){Serial.println(clockName);return String(clockName);}
   return String(); //Return empty string if no matches
 }
@@ -159,6 +171,11 @@ void setupWeb() {
         recvDate=params;
       } else if (name == "TIME") {
         recvTime=params;
+      } else if (name == "TZNAME") {
+        if (isValidTzName(params)) {
+          tzName = params;
+          preferences.putString("tzName",params);
+        }
       } else if (name == "NAME") {
         clockName=params;
         preferences.putString("clockName",params);
