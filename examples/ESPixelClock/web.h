@@ -166,23 +166,21 @@ void setupWeb() {
     }
     preferences.end();
     char buf[20];
-    strcpy(buf,(recvDate + " " + recvTime).c_str());
+    snprintf(buf, sizeof(buf), "%s %s", recvDate.c_str(), recvTime.c_str()); //bounded: input comes from the request
     Serial.println(buf);
-    struct tm timeinfo;
+    struct tm timeinfo = {};
 
     if (strptime(buf, "%Y-%m-%d %T",&timeinfo) == NULL)
           Serial.printf("\nstrptime failed\n");
     else
     {
       Serial.println(&timeinfo, "Submitted time: %A, %B %d %Y %H:%M:%S");
-      int hour = timeinfo.tm_hour;
-      int minute  = timeinfo.tm_min;
-      int second  = timeinfo.tm_sec;
-      int day = timeinfo.tm_mday;
-      int month = timeinfo.tm_mon + 1;
-      int year = timeinfo.tm_year +1900;
-      DS3231M.adjust(DateTime(year,month,day,hour,minute,second));      // Adjust the RTC date/time
-      Serial.print(F("RTC time/date has been set.\n")); 
+      // The form gives local time; the RTC keeps UTC.
+      setenv("TZ", tzInfo.c_str(), 1);
+      tzset();
+      timeinfo.tm_isdst = -1; //let mktime work out DST
+      DS3231M.adjust(DateTime((uint32_t)mktime(&timeinfo)));
+      Serial.print(F("RTC time/date has been set.\n"));
     }
     Serial.print(F("Preferences updated, rebooting...\n\n\n\n\n"));
     delay(1000);

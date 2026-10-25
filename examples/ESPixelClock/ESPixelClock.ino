@@ -188,7 +188,11 @@ void printLocalTime()
   
   setenv("TZ", tzInfo.c_str(), 1);
   tzset();
-  now = DS3231M.now();
+  // The RTC keeps UTC; convert here so DST switches on time, even without WiFi.
+  time_t utc = DS3231M.now().unixtime();
+  struct tm lt;
+  localtime_r(&utc, &lt);
+  now = DateTime(lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
 
   //struct tm timeinfo;
 
@@ -218,14 +222,9 @@ void getNTPTime(){
       return;
     }
     Serial.println(&timeinfo, "NTP Time: %A, %B %d %Y %H:%M:%S");
-    int hour = timeinfo.tm_hour;
-    int minute  = timeinfo.tm_min;
-    int second  = timeinfo.tm_sec;
-    int day = timeinfo.tm_mday;
-    int month = timeinfo.tm_mon + 1;
-    int year = timeinfo.tm_year +1900;
-    DS3231M.adjust(DateTime(year,month,day,hour,minute,second));      // Adjust the RTC date/time
-    Serial.print(F("RTC time/date has been set.\n")); 
+    DS3231M.adjust(DateTime((uint32_t)time(nullptr)));      // Store UTC in the RTC
+    Serial.print(F("RTC time/date has been set.\n"));
+    printLocalTime(); // refresh the display right away
   
   } else {
     Serial.println("Can't get NTP time without WiFi...");
