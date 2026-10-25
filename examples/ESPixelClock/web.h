@@ -25,6 +25,51 @@
 //#include "compressed_html.h"
 //#include "combined_html.h"
 
+// Escape a value for HTML text and for single- or double-quoted attributes.
+String htmlEscape(const String& s){
+  String out;
+  out.reserve(s.length() + 8);
+  for (size_t i = 0; i < s.length(); i++){
+    char c = s[i];
+    switch (c){
+      case '&':  out += "&amp;";  break;
+      case '<':  out += "&lt;";   break;
+      case '>':  out += "&gt;";   break;
+      case '"':  out += "&quot;"; break;
+      case '\'': out += "&#39;";  break;
+      default:   out += c;
+    }
+  }
+  return out;
+}
+
+// Escape a value for a quoted JavaScript string inside a <script> block.
+String jsEscape(const String& s){
+  String out;
+  out.reserve(s.length() + 8);
+  for (size_t i = 0; i < s.length(); i++){
+    unsigned char c = s[i];
+    if (c < 0x20 || c == '\\' || c == '"' || c == '\'' || c == '<' || c == '>' || c == '&'){
+      char buf[7];
+      snprintf(buf, sizeof(buf), "\\u%04x", c);
+      out += buf;
+    } else {
+      out += (char)c;
+    }
+  }
+  return out;
+}
+
+// POSIX TZ strings, e.g. "CET-1CEST,M3.5.0,M10.5.0/3," or "<+03>-3".
+bool isValidTzString(const String& s){
+  if (s.length() == 0 || s.length() > 64) return false;
+  for (size_t i = 0; i < s.length(); i++){
+    char c = s[i];
+    if (c == '\0' || !(isalnum((unsigned char)c) || strchr(",./:+-<>", c))) return false;
+  }
+  return true;
+}
+
 String processor(const String& var){
   Serial.print(var+": ");
  char dateStr[13];
@@ -32,16 +77,17 @@ String processor(const String& var){
   sprintf(dateStr,"%04d-%02d-%02d", now.year(),now.month(), now.day());
   sprintf(timeStr,"%02d:%02d:%02d",now.hour(), now.minute(), now.second());
   
-  if(var == "WIFIAP"){Serial.println(ssid);return String(ssid);}
-  if(var == "PASSWORD"){Serial.println("*****");return String(password);} 
-  if(var == "NTPSERVER1"){Serial.println(ntpServer1);return String(ntpServer1);}
-  if(var == "NTPSERVER2"){Serial.println(ntpServer2);return String(ntpServer2);}
+  // Stored values are user input: escape them for the page context they land in.
+  if(var == "WIFIAP"){Serial.println(ssid);return htmlEscape(ssid);}
+  if(var == "PASSWORD"){Serial.println("*****");return String();} //never send the stored password to the browser
+  if(var == "NTPSERVER1"){Serial.println(ntpServer1);return htmlEscape(ntpServer1);}
+  if(var == "NTPSERVER2"){Serial.println(ntpServer2);return htmlEscape(ntpServer2);}
   if(var == "TEMPERATURE"){Serial.println(temp);return String(temp);}
   if(var == "HUMIDITY"){Serial.println(rh);return String(rh);}
   if(var == "DATE"){Serial.println(dateStr);return String(dateStr);}
   if(var == "TIME"){Serial.println(timeStr);return String(timeStr);}
-  if(var == "TIMEZONE"){Serial.println(tzInfo);return String(tzInfo);}
-  if(var == "NAME"){Serial.println(clockName);return String(clockName);}
+  if(var == "TIMEZONE"){Serial.println(tzInfo);return jsEscape(tzInfo);} //inside a <script> string
+  if(var == "NAME"){Serial.println(clockName);return htmlEscape(clockName);}
   return String(); //Return empty string if no matches
 }
 
@@ -144,17 +190,22 @@ void setupWeb() {
         preferences.putString("ssid",ssid);
         
       } else if (name == "WIFI_PASS") {
-        password = params;
-        preferences.putString("password",password);
+        if (params.length() > 0) { //the page never shows the stored password; empty keeps it
+          password = params;
+          preferences.putString("password",password);
+        }
       } else if (name == "NTP_SERVER1") {
         preferences.putString("ntpServer1",params);
       } else if (name == "NTP_SERVER2") {
         preferences.putString("ntpServer2",params);
       } else if (name == "TIMEZONE") {
-        tzInfo = params;
-        struct tm recvTime;
-        preferences.putString("timezone",tzInfo);
-        Serial.print("Tz selected: ");Serial.println(params);
+        if (isValidTzString(params)) {
+          tzInfo = params;
+          preferences.putString("timezone",tzInfo);
+          Serial.print("Tz selected: ");Serial.println(params);
+        } else {
+          Serial.println("Rejected invalid time zone string");
+        }
       } else if (name == "DATE") {
         recvDate=params;
       } else if (name == "TIME") {

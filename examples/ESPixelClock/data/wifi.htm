@@ -38,7 +38,7 @@
     <form action='/WIFIsubmit' method='POST' enctype="multipart/form-data" style="width: 40ch;padding-left:50px;">
     <h1>"%NAME%" Configuration</h1>
 	Wifi SSID: <input class="form-control input" type='text' name='WIFI_AP' value='%WIFIAP%' ><br>
-    Wifi Password: <input class="form-control input" type='password' name='WIFI_PASS' value='%PASSWORD%'><br>
+    Wifi Password: <input class="form-control input" type='password' name='WIFI_PASS' value='' placeholder='Unchanged - type a new password to replace it' autocomplete='new-password'><br>
     NTP Server1: <input class="form-control input" type='text' name='NTP_SERVER1' value='%NTPSERVER1%'><br>
 	NTP Server2: <input class="form-control input" type='text' name='NTP_SERVER2' value='%NTPSERVER2%'><br>
 	<label  for="TIMEZONE">Time Zone:</label>
