@@ -234,6 +234,13 @@ void getNTPTime(){
 
 
 void setup() {
+  // Start the LEDs first and blank them: the data line floats during reset,
+  // so the strip shows random noise until the first frame is sent.
+  FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.setCorrection(TypicalSMD5050);
+  FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
+  FastLED.clear(true);
+
   pinMode(button1.PIN,INPUT_PULLUP);
   attachInterruptArg(button1.PIN, isr, &button1, FALLING);
   pinMode(LED_PIN, OUTPUT);
@@ -268,15 +275,8 @@ void setup() {
   SPIFFS.begin();
   listDir(SPIFFS, "/", 1);
 
-  FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-  FastLED.setCorrection(TypicalSMD5050);
-  FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
- 
   // set master brightness control
   FastLED.setBrightness(brightness);
-  fill_rainbow( leds, NUM_LEDS, gHue, speed);
-  FastLED.show();
-  FastLED.delay(250);
   autoPlayTimeout = millis() + (autoplayDuration * 1000);
   
   loadFieldsFromEEPROM(fields, fieldCount);
@@ -286,8 +286,10 @@ void setup() {
   server.begin();
   Serial.println("HTTP server started on port 80");
   getNTPTime(); //get initial time
+  printLocalTime(); //so the first frame shows the NTP-corrected time
   temp = SHT21.getTemperature()+temperatureOffset; //get inital temp reading
   rh = SHT21.getHumidity();
+  showIP(); //last, so the time follows without a dark gap; OTA is already reachable
 }
 
 void maskTime(int timeInt){
@@ -364,6 +366,38 @@ void maskTime(int timeInt){
       leds[84]=CRGB::Black; //convert colon to decimal if timer < 99 seconds
     }
   }
+}
+
+// Show the IP address one octet at a time so the clock can be found on the network.
+// Falls back to the softAP IP when not connected. Uses the current pattern and palette,
+// like the time display. Blocks ~7 s: only call from setup().
+void showIP(){
+  if (power == 0) return;
+  IPAddress ip = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP() : WiFi.softAPIP();
+  Serial.print("Showing IP: "); Serial.println(ip);
+  uint8_t savedLeadingZero = leadingZeroEnabled;
+  leadingZeroEnabled = 0; //blank the first digit
+  for (int i = 0; i < 4; i++){
+    uint32_t until = millis() + 1500;
+    while (millis() < until){
+      patterns[currentPatternIndex].pattern();
+      maskTime(ip[i]);
+      col = CRGB::Black;
+      if (ip[i] < 100) { seg2A = seg2B = seg2C = seg2D = seg2E = seg2F = seg2G = CRGB::Black; } //no leading zeros: " 24", "  7"
+      if (ip[i] < 10)  { seg3A = seg3B = seg3C = seg3D = seg3E = seg3F = seg3G = CRGB::Black; }
+      EVERY_N_MILLISECONDS(40) {
+        nblendPaletteTowardPalette(currentPalette, targetPalette, 8);
+        gHue++;
+      }
+      FastLED.show();
+      FastLED.delay(1000 / FRAMES_PER_SECOND);
+    }
+    if (i < 3){
+      FastLED.clear(true); //short gap so repeated octets can be told apart
+      FastLED.delay(300);
+    }
+  }
+  leadingZeroEnabled = savedLeadingZero;
 }
 
 void nextPattern()
