@@ -285,6 +285,7 @@ void setup() {
   ElegantOTA.begin(&server);    // Start ElegantOTA
   server.begin();
   Serial.println("HTTP server started on port 80");
+  showIP(); //after server.begin() so OTA is already reachable
   getNTPTime(); //get initial time
   temp = SHT21.getTemperature()+temperatureOffset; //get inital temp reading
   rh = SHT21.getHumidity();
@@ -364,6 +365,25 @@ void maskTime(int timeInt){
       leds[84]=CRGB::Black; //convert colon to decimal if timer < 99 seconds
     }
   }
+}
+
+// Show the IP address one octet at a time so the clock can be found on the network.
+// Falls back to the softAP IP when not connected. Blocks ~7 s: only call from setup().
+void showIP(){
+  IPAddress ip = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP() : WiFi.softAPIP();
+  Serial.print("Showing IP: "); Serial.println(ip);
+  uint8_t savedLeadingZero = leadingZeroEnabled;
+  leadingZeroEnabled = 0; //octets render as " 172", " 024"
+  for (int i = 0; i < 4; i++){
+    fill_solid(leds, NUM_LEDS, CRGB::White);
+    maskTime(ip[i]);
+    col = CRGB::Black;
+    FastLED.show();
+    FastLED.delay(1500);
+    FastLED.clear(true); //short gap so repeated octets can be told apart
+    FastLED.delay(300);
+  }
+  leadingZeroEnabled = savedLeadingZero;
 }
 
 void nextPattern()
